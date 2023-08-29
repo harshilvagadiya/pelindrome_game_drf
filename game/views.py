@@ -121,6 +121,7 @@ class LoginAPIView(APIView):
 class CreateGame(APIView):
     def post(self, request):
         game_id=str(uuid.uuid1().hex[:6])
+        print("-=-=-=-=-=",request.user)
         game = Game(user=request.user, game_string="", game_id=game_id)
         game.save()
         return Response({"game_id": game.game_id}, status=status.HTTP_201_CREATED)
