@@ -1,5 +1,5 @@
-Requirment:
 """
+Requirment:
 
 Implement REST APls for a palindrome game.
 The following APls need to be implemented using Python
