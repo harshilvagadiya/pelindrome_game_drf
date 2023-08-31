@@ -1,3 +1,4 @@
+import random
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -5,10 +6,7 @@ from django.contrib.auth.models import User
 from django.conf import settings
 from rest_framework_jwt.settings import api_settings
 from rest_framework_simplejwt.tokens import RefreshToken
-jwt_payload_handler = api_settings.JWT_PAYLOAD_HANDLER
-jwt_encode_handler = api_settings.JWT_ENCODE_HANDLER
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
-from rest_framework.exceptions import PermissionDenied
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import AccessToken
 from django.contrib.auth import get_user_model
@@ -19,6 +17,8 @@ from .serializers import (
     GameSerializer
 )
 import uuid
+jwt_payload_handler = api_settings.JWT_PAYLOAD_HANDLER
+jwt_encode_handler = api_settings.JWT_ENCODE_HANDLER
 
 User = get_user_model()
 
@@ -27,14 +27,12 @@ class UserRegistrationAPIView(APIView):
     permission_classes= (AllowAny,)
     
     def get(self, request):
-        # users = User.objects.all()
         users = User.objects.all()
         serializer = UserSerializer(users, many=True)
         return Response(serializer.data)
     
     def post(self, request):
         serializer = UserSerializer(data=request.data).is_valid()
-        print(">>>>>>>>>>>",serializer)
         username = request.data.get('username')
         password = request.data.get('password')
         email = request.data.get('email')
@@ -118,29 +116,46 @@ class LoginAPIView(APIView):
         return Response({'token': access_token}, status=status.HTTP_200_OK)
 
 
-class CreateGame(APIView):
-    def post(self, request):
-        game_id=str(uuid.uuid1().hex[:6])
-        print("-=-=-=-=-=",request.user)
-        game = Game(user=request.user, game_string="", game_id=game_id)
-        game.save()
-        return Response({"game_id": game.game_id}, status=status.HTTP_201_CREATED)
+class GameList(APIView):
+    permission_classes = [IsAuthenticated]
 
-class GetBoard(APIView):
-    def get(self, request, game_id):
-        game = Game.objects.get(game_id=game_id)
-        return Response({"game_string": game.game_string})
-
-class UpdateBoard(APIView):
-    def post(self, request, game_id):
-        game = Game.objects.get(game_id=game_id)
-        game.game_string += request.data['character']
-        # Add logic to add random numbers
-        game.save()
-        return Response(status=status.HTTP_200_OK)
-
-class ListGames(APIView):
     def get(self, request):
         games = Game.objects.all()
         serializer = GameSerializer(games, many=True)
         return Response(serializer.data)
+
+
+class GameStart(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        game_id=str(uuid.uuid1().hex[:6])
+        game = Game(game_id=game_id, game_string='')
+        game.save()
+        return Response({'game_id': game_id}, status=status.HTTP_201_CREATED)
+
+
+class GameBoard(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, game_id):
+        try:
+            game = Game.objects.get(game_id=game_id)
+            return Response({'game_string': game.game_string})
+        except Game.DoesNotExist:
+            return Response({'error': 'Game not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    def put(self, request, game_id):
+        try:
+            game = Game.objects.get(game_id=game_id)
+            new_char = random.choice('abcdefghijklmnopqrstuvwxyz')
+            game.game_string += new_char
+            game.save()
+
+            if len(game.game_string) == 6:
+                is_palindrome = game.game_string == game.game_string[::-1]
+                return Response({'game_string': game.game_string, 'is_palindrome': game.is_palindrome})
+            else:
+                return Response({'game_string': game.game_string})
+        except Game.DoesNotExist:
+            return Response({'error': 'Game not found'}, status=status.HTTP_404_NOT_FOUND)

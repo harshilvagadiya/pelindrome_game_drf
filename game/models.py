@@ -11,7 +11,7 @@ class User(models.Model):
         return self.username
     
 class Game(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    game_id = models.CharField(max_length=10, unique=True, default="999999")
-    game_string = models.CharField(max_length=50, default="115511")
+    # user = models.ForeignKey(User, on_delete=models.CASCADE)
+    game_id = models.CharField(max_length=100, unique=True)
+    game_string = models.CharField(max_length=100)
     is_palindrome = models.BooleanField(default=False)
